@@ -35,6 +35,13 @@ class Agent:
         print(f"New message in room {room.room_id}: {message}")
         self.__execute_sparql(message, room)
 
+    def on_new_reaction(self, reaction : str, message_ordinal : int, room : Chatroom):
+        """Callback function to handle new reactions."""
+        print(f"New reaction '{reaction}' on message #{message_ordinal} in room {room.room_id}")
+        # Implement your agent logic here, e.g., respond to the reaction.
+        room.post_messages(f"Thanks for your reaction: '{reaction}'")
+
+
     def __execute_sparql(self, message: str, room: Chatroom):
         """Execute a SPARQL query."""
         try:
@@ -68,11 +75,6 @@ class Agent:
         pattern = r"'''(.*?)'''"
         return re.search(pattern, message, re.DOTALL)
 
-    def on_new_reaction(self, reaction : str, message_ordinal : int, room : Chatroom):
-        """Callback function to handle new reactions."""
-        print(f"New reaction '{reaction}' on message #{message_ordinal} in room {room.room_id}")
-        # Implement your agent logic here, e.g., respond to the reaction.
-        room.post_messages(f"Thanks for your reaction: '{reaction}'")
 
     @staticmethod
     def get_time():
