@@ -43,7 +43,7 @@ class Agent:
 
 
     def __execute_sparql(self, message: str, room: Chatroom):
-        """Execute a SPARQL query."""
+        """Execute a SPARQL query after extracting the actual SPARQL query."""
         try:
             match = self.__extract_messages(message)
             if match:
@@ -61,7 +61,7 @@ class Agent:
             room.post_messages("There was no valid SPARQL query in your prompt, please encode the SPARQL query within single quotes or only provide the SPARQL query.")
 
     def __extract_literals(self, query: str):
-        """Extract literals from the  SPARQL query."""
+        """Extract literals from the SPARQL query."""
         literals = []
         if len(query):
             for row in self.g.query(query):
@@ -71,7 +71,7 @@ class Agent:
         return literals
 
     def __extract_messages(self, message: str):
-        """Extract messages from the  SPARQL query."""
+        """Extract messages from the SPARQL query."""
         pattern = r"'''(.*?)'''"
         return re.search(pattern, message, re.DOTALL)
 
