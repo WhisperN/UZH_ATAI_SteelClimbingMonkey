@@ -6,6 +6,8 @@ from rdflib import Graph
 
 from speakeasypy import Chatroom, EventType, Speakeasy
 
+from src.pipeline import Pipeline
+
 DEFAULT_HOST_URL = 'https://speakeasy.ifi.uzh.ch'
 
 
@@ -26,6 +28,8 @@ class Agent:
         self.speakeasy.register_callback(self.on_new_message, EventType.MESSAGE)
         self.speakeasy.register_callback(self.on_new_reaction, EventType.REACTION)
 
+        self.pipeline = Pipeline()
+
     def listen(self):
         """Start listening for events."""
         self.speakeasy.start_listening()
@@ -45,11 +49,12 @@ class Agent:
     def __execute_sparql(self, message: str, room: Chatroom):
         """Execute a SPARQL query after extracting the actual SPARQL query."""
         try:
-            match = self.__extract_messages(message)
+            match = self.pipeline.getQuery(message)
             if match:
                 query = match.group(1)
                 literals = self.__extract_literals(query)
-                room.post_messages(str.join(', ', literals))
+                processed_response = self.pipeline.getResponse(literals)
+                room.post_messages(str.join(', ', processed_response))
             else:
                 literals = self.__extract_literals(message)
                 if literals:
