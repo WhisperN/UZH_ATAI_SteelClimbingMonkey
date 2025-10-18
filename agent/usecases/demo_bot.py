@@ -1,4 +1,8 @@
+import re
 import time
+from rdflib import Literal
+
+from rdflib import Graph
 
 from speakeasypy import Chatroom, EventType, Speakeasy
 
@@ -12,6 +16,8 @@ class Agent:
         self.speakeasy = Speakeasy(host=DEFAULT_HOST_URL, username=username, password=password)
         self.speakeasy.login()  # This framework will help you log out automatically when the program terminates.
 
+        self.g = Graph().parse("https://files.ifi.uzh.ch/ddis/teaching/2025/ATAI/dataset/graph.nt")
+        print('parsing done')
         self.speakeasy.register_callback(self.on_new_message, EventType.MESSAGE)
         self.speakeasy.register_callback(self.on_new_reaction, EventType.REACTION)
 
@@ -22,10 +28,37 @@ class Agent:
     def on_new_message(self, message : str, room : Chatroom):
         """Callback function to handle new messages."""
         print(f"New message in room {room.room_id}: {message}")
-        # Implement your agent logic here, e.g., respond to the message.
-        room.post_messages(f"Received your message: '{message}'")
+        self.__execute_sparql(message, room)
 
-    def on_new_reaction(self, reaction : str, message_ordinal : int, room : Chatroom): 
+    def __execute_sparql(self, message: str, room: Chatroom):
+        """Execute a SPARQL query."""
+        try:
+            pattern = r"'''(.*?)'''"
+            match = re.search(pattern, message, re.DOTALL)
+            if match:
+                query = match.group(1)
+                literals = self.__extract_literals(query)
+                room.post_messages(str.join(', ', literals))
+            else:
+                literals = self.__extract_literals(message)
+                if literals:
+                    room.post_messages(', '.join(map(str, literals)))
+                else:
+                    room.post_messages("There was no valid SPARQL query in your prompt, please encode the SPARQL query within single quotes or only provide the SPARQL query.")
+        except Exception as e:
+            print(e)
+            room.post_messages("There was no valid SPARQL query in your prompt, please encode the SPARQL query within single quotes or only provide the SPARQL query.")
+
+    def __extract_literals(self, query: str):
+        literals = []
+        if len(query):
+            for row in self.g.query(query):
+                for value in row:
+                    if isinstance(value, Literal):
+                        literals.append(value.toPython())
+        return literals
+
+    def on_new_reaction(self, reaction : str, message_ordinal : int, room : Chatroom):
         """Callback function to handle new reactions."""
         print(f"New reaction '{reaction}' on message #{message_ordinal} in room {room.room_id}")
         # Implement your agent logic here, e.g., respond to the reaction.
@@ -37,5 +70,5 @@ class Agent:
 
 
 if __name__ == '__main__':
-    demo_bot = Agent("bot1", "bot1")
+    demo_bot = Agent("SteelClimbingMonkey", "Yd0Gg8nK")
     demo_bot.listen()
