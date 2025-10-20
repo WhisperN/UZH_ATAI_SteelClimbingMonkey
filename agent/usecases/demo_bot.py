@@ -1,15 +1,16 @@
 import re
 import time
 from rdflib import Literal
+import traceback
+
 
 from rdflib import Graph
 
 from speakeasypy import Chatroom, EventType, Speakeasy
 
-from src.pipeline import Pipeline
+from agent.src.pipeline import Pipeline
 
 DEFAULT_HOST_URL = 'https://speakeasy.ifi.uzh.ch'
-
 
 class Agent:
     def __init__(self, username, password):
@@ -49,7 +50,8 @@ class Agent:
     def __execute_sparql(self, message: str, room: Chatroom):
         """Execute a SPARQL query after extracting the actual SPARQL query."""
         try:
-            match = self.pipeline.getQuery(message)
+            query = self.pipeline.getQuery(message)
+            match = self.__extract_messages(query)
             if match:
                 query = match.group(1)
                 literals = self.__extract_literals(query)
@@ -61,8 +63,8 @@ class Agent:
                     room.post_messages(', '.join(map(str, literals)))
                 else:
                     room.post_messages("There was no valid SPARQL query in your prompt, please encode the SPARQL query within single quotes or only provide the SPARQL query.")
-        except Exception as e:
-            print(e)
+        except Exception:
+            print(traceback.format_exc())
             room.post_messages("There was no valid SPARQL query in your prompt, please encode the SPARQL query within single quotes or only provide the SPARQL query.")
 
     def __extract_literals(self, query: str):
