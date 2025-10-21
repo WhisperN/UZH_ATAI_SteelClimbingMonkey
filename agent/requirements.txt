@@ -1,5 +1,7 @@
 openapi @ git+https://github.com/Alan-s-Speakeasy/speakeasy-openapi-python
+speakeasypy @ git+https://gitlab.ifi.uzh.ch/ddis/Lectures/atai/speakeasy-python-client-library.git
 requests
 sseclient
 alive-progress
 rdflib
+transformers
