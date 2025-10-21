@@ -7,7 +7,7 @@ author = "author name for speakeasypy"
 author_email = "author@email.ch"
 url = "https://gitlab.ifi.uzh.ch/ddis/Lectures/atai/speakeasy-python-client-library"
 
-install_requires = open("/agent/requirements.txt").read().split('\n')
+install_requires = open("../requirements.txt").read().split('\n')
 
 packages = find_packages()
 
