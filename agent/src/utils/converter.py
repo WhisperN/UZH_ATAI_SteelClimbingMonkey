@@ -1,4 +1,5 @@
-from agent.src.nl.qwen257B import Qwen257B
+from src.nl.qwen257B import Qwen257B
+
 class Converter:
     def __init__(self):
         self.qwen257B = Qwen257B()

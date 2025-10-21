@@ -1,4 +1,4 @@
-from agent.src.nl.phi3mini128k import Phi3Mini128k
+from src.nl.phi3mini128k import Phi3Mini128k
 
 class QuestionTypePredictor:
     def __init__(self):

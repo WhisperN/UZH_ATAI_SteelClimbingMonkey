@@ -8,7 +8,7 @@ from rdflib import Graph
 
 from speakeasypy import Chatroom, EventType, Speakeasy
 
-from agent.src.pipeline import Pipeline
+from src.pipeline import Pipeline
 
 DEFAULT_HOST_URL = 'https://speakeasy.ifi.uzh.ch'
 

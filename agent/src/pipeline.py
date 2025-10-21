@@ -1,5 +1,5 @@
-from agent.src.utils.converter import Converter
-from agent.src.utils.question_type_predictor import QuestionTypePredictor
+from src.utils.converter import Converter
+from src.utils.question_type_predictor import QuestionTypePredictor
 
 class Pipeline:
     def __init__(self):
