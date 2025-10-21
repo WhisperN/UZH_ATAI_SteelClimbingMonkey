@@ -5,3 +5,5 @@ sseclient
 alive-progress
 rdflib
 transformers
+PyTorch
+TensorFlow
