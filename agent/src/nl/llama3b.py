@@ -1,9 +1,9 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-class Qwen257B:
+class Llama3B:
     def __init__(self):
-        self.tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
-        self.model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
+        self.tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
+        self.model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
 
     def ask(self, question):
         """
