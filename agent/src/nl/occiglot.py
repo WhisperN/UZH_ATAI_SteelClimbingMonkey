@@ -93,9 +93,14 @@ class OcciglotSPARQL:
     def _find_entities(self, question: str, top_k: int = 2):
         q_emb = self.embedder.encode(question, convert_to_tensor=True)
         cos_scores = util.cos_sim(q_emb, self.entity_embeddings).flatten()
+        question_lower = question.lower()
+
+        for i, _ in enumerate(self.entities):
+            if self.entities[i][1].lower() in question_lower:
+                cos_scores[i] += 0.1
         top = torch.topk(cos_scores, k=min(top_k, len(self.entities)))
-        print("Top {} entities:".format(top_k))
-        return sorted([(self.entities[i][0], self.entities[i][1], float(cos_scores[i])) for i in top.indices], key=lambda t: t[2])
+
+        return [(self.entities[i][0], self.entities[i][1], float(cos_scores[i])) for i in top.indices]
 
     def _find_predicates(self, question: str, top_k: int = 3):
         q_emb = self.embedder.encode(question, convert_to_tensor=True)
@@ -132,7 +137,7 @@ SELECT DISTINCT {select_vars} WHERE {{
     def ask(self, question: str):
         entities = self._find_entities(question)
         predicates = self._find_predicates(question)
-        print(f"Detected entities: {[e[1] for e in entities]}")
+        print(f"Detected entities: {[(e[1], e[2]) for e in entities]}")
         print(f"Top predicates: {[p[0].split('/')[-1] for p in predicates]}")
 
         if len(entities) >= 2:
