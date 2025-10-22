@@ -1,4 +1,5 @@
 from src.nl.phi3mini128k import Phi3Mini128k
+import re
 
 class QuestionTypePredictor:
     def __init__(self):
@@ -11,6 +12,9 @@ class QuestionTypePredictor:
         - embedding
         """
         classified = self.phi_model.ask(question)
-        # Optional string parsing
-        print(classified)
+        match = re.search(r"\b(Factual|Embedding)\b", classified, re.IGNORECASE)
+        if match:
+            classified = match.group(1).capitalize()
+        else:
+            classified = "Factual"
         return classified

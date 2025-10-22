@@ -13,6 +13,7 @@ class Pipeline:
         query = ""
         # 1. predict question type
         qt = self.qtp.getQuestionType(question)
+        print("qt", qt)
         if qt == "Factual":
             # 2. Convert nl to sparql
             query = self.conv.factual_convert_nl_to_sparql(question)
@@ -27,9 +28,8 @@ class Pipeline:
             # 5. Send to agent
         else:
             # hardened failsafe
-            pass
-        print(query)
+            query = self.conv.factual_convert_nl_to_sparql(question)
         return query
 
-    def getResponse(self, query_result) -> str:
-        return self.conv.query_result_to_nl(query_result)
+    def getResponse(self, question, query_result, additional_info = "") -> str:
+        return self.conv.query_result_to_nl(question, query_result, additional_info)

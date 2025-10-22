@@ -2,8 +2,8 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 class Phi3Mini128k:
 	def __init__(self):
-		self.tokenizer = AutoTokenizer.from_pretrained("microsoft/Phi-3-mini-128k-instruct", trust_remote_code=True)
-		self.model = AutoModelForCausalLM.from_pretrained("microsoft/Phi-3-mini-128k-instruct", trust_remote_code=True)
+		self.tokenizer = AutoTokenizer.from_pretrained("microsoft/Phi-3-mini-128k-instruct", trust_remote_code=False)
+		self.model = AutoModelForCausalLM.from_pretrained("microsoft/Phi-3-mini-128k-instruct", trust_remote_code=False)
 
 	def ask(self, msg):
 		"""
@@ -14,13 +14,7 @@ class Phi3Mini128k:
 		messages = [
 			{
 				"role": "user",
-			 	"content": "Classify a question according to these types: "
-						   "Factual, Embedded"
-						   "The question:"
-						   "'''"
-						   f"{msg}"
-						   "'''"
-						   "Please only respond with either Factual or Embedded"
+			 	"content": f"Predict the type of this question : '''{msg}''', either return 'Factual' or 'Embedding'."
 			},
 		]
 		inputs = self.tokenizer.apply_chat_template(
@@ -29,6 +23,7 @@ class Phi3Mini128k:
 			tokenize=True,
 			return_dict=True,
 			return_tensors="pt",
+
 		).to(self.model.device)
 
 		outputs = self.model.generate(**inputs, max_new_tokens=40)
