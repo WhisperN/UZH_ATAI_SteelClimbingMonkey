@@ -1,4 +1,4 @@
-import torch, pickle, hashlib
+import torch, pickle, hashlib, re, difflib
 from pathlib import Path
 from rdflib import Graph, Namespace
 from sentence_transformers import SentenceTransformer, util
@@ -18,6 +18,7 @@ class OcciglotSPARQL:
         self.PRED_EMB_CACHE = self.CACHE_DIR / f"pred_emb_{self.dataset_hash}.pt"
         self.ENTITY_LABELS_CACHE = self.CACHE_DIR / f"entity_labels_{self.dataset_hash}.pkl"
         self.PREDICATES_CACHE = self.CACHE_DIR / f"predicates_{self.dataset_hash}.pkl"
+        self.REPLACEMENT_MAP_CACHE = self.CACHE_DIR / f"replacement_map_{self.dataset_hash}.pkl"
 
         if self.GRAPH_CACHE.exists():
             print("→ Loading cached RDF graph...")
@@ -87,19 +88,27 @@ class OcciglotSPARQL:
             torch.save(self.pred_embeddings, self.PRED_EMB_CACHE)
             torch.save(self.entity_embeddings, self.ENTITY_EMB_CACHE)
 
+        if self.REPLACEMENT_MAP_CACHE.exists():
+            print("→ Loading cached semantic replacement map...")
+            self.replacement_map = pickle.load(open(self.REPLACEMENT_MAP_CACHE, "rb"))
+        else:
+            print("→ Building semantic replacement map (this may take several minutes)...")
+            self.replacement_map = {}
+            for i, pred in enumerate(self.predicates):
+                cos_scores = util.cos_sim(self.pred_embeddings[i], self.pred_embeddings).flatten()
+                top = torch.topk(cos_scores, k=6)
+                similar_preds = [self.predicates[j] for j in top.indices if j != i][:5]
+                self.replacement_map[pred] = similar_preds
+            pickle.dump(self.replacement_map, open(self.REPLACEMENT_MAP_CACHE, "wb"))
+            print("✅ Semantic replacement map built and cached.")
+
         print("Model and KG context ready (cached loading will now be instant).\n")
 
 
     def _find_entities(self, question: str, top_k: int = 2):
-        q_emb = self.embedder.encode(question, convert_to_tensor=True)
+        q_emb = self.embedder.encode(question.lower(), convert_to_tensor=True)
         cos_scores = util.cos_sim(q_emb, self.entity_embeddings).flatten()
-        question_lower = question.lower()
-
-        for i, _ in enumerate(self.entities):
-            if self.entities[i][1].lower() in question_lower:
-                cos_scores[i] += 0.1
         top = torch.topk(cos_scores, k=min(top_k, len(self.entities)))
-
         return [(self.entities[i][0], self.entities[i][1], float(cos_scores[i])) for i in top.indices]
 
     def _find_predicates(self, question: str, top_k: int = 3):
@@ -138,15 +147,51 @@ SELECT DISTINCT {select_vars} WHERE {{
         entities = self._find_entities(question)
         predicates = self._find_predicates(question)
         print(f"Detected entities: {[(e[1], e[2]) for e in entities]}")
-        print(f"Top predicates: {[p[0].split('/')[-1] for p in predicates]}")
+        print(f"Top predicates: {[(p[0].split('/')[-1], p[1]) for p in predicates]}")
 
+        is_valid_confidence = any(e[2] > 0.6 for e in entities)
+        if not is_valid_confidence:
+            return [], []
         if len(entities) >= 2:
-            print('several entities detected')
-            return self._compose_multi_entity_query(entities, predicates)
+            result = []
+            for _ in range(len(entities)):
+                temp = self._compose_multi_entity_query(entities, predicates)
+                result.append(temp)
+                entities = entities[1:] + entities[:1]
+            return result, [e[1] for e in entities]
         elif len(entities) == 1 and len(predicates) >= 1:
             print('one entity detected')
-            return self._compose_single_entity_query(entities[0][0], [p[0] for p in predicates])
-        else:
-            print('no entities detected')
-            print('searching similar entities based on embeddings')
-            return ""
+            return [self._compose_single_entity_query(entities[0][0], [p[0] for p in predicates])], [entities[0][1]]
+        return [], []
+
+
+    def embedding_fallback(self, message: str):
+        print("Try fallback with embeddings")
+
+        print(self.replacement_map)
+
+        tokens = re.findall(r'\b[a-zA-Z]{3,}\b', message.lower())
+        keywords = [t for t in tokens if t not in {"what", "who", "when", "where", "is", "are", "the", "of", "a"}]
+        print(f"Extracted keywords: {keywords}")
+
+        alternative_questions = {message}
+
+        for kw in keywords:
+            matched_preds = [p for p in self.predicates if kw in p.lower()]
+            for pred in matched_preds:
+                if pred in self.replacement_map:
+                    for alt_pred in self.replacement_map[pred]:
+                        orig_name = pred.split('/')[-1]
+                        alt_name = alt_pred.split('/')[-1]
+                        new_q = re.sub(rf"\b{orig_name.lower()}\b", alt_name, message, flags=re.IGNORECASE)
+                        alternative_questions.add(new_q)
+
+        print(f"Generated alternative questions: {list(alternative_questions)}")
+
+        for alt_q in alternative_questions:
+            queries, entities = self.ask(alt_q)
+            if queries and entities:
+                print(f"Found valid interpretation via '{alt_q}'")
+                return queries, entities
+
+        return [], []

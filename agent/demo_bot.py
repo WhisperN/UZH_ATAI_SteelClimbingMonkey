@@ -2,12 +2,8 @@ import re
 import time
 from rdflib import Literal
 import traceback
-
-
 from rdflib import Graph
-
 from speakeasypy import Chatroom, EventType, Speakeasy
-
 from src.pipeline import Pipeline
 
 DEFAULT_HOST_URL = 'https://speakeasy.ifi.uzh.ch'
@@ -65,22 +61,57 @@ class Agent:
 
     def __execute_sparql(self, message: str, room: Chatroom):
         """Execute a SPARQL query after extracting the actual SPARQL query."""
-        query = self.pipeline.getQuery(message)
-        all_results = []
+        match = re.search(
+            r'(?:[\'"]{3}\s*)?\b(SELECT|ASK|CONSTRUCT|DESCRIBE)\b.*?(?:[\'"]{3}|$)',
+            message,
+            re.IGNORECASE | re.DOTALL
+        )
+        if match:
+            full_query = match.group(0)
+            query = re.sub(r'^[\'"]{3}|[\'"]{3}$', '', full_query.strip()).strip()
+            print("matchedQuery:", query)
+            literals = self.__extract_literals(query)
+            if literals:
+                actual_response = self.pipeline.getResponse(message, literals)
+                room.post_messages(actual_response)
+                return
+            room.post_messages("Sadly your query either had errors or i did not find any results for the provided query, please try again.")
+            return
 
-        print("query: ", query)
-        literals = self.__extract_literals(query)
-        print("literals: ", literals)
-        pr = ""
-        if literals:
-            pr = self.pipeline.getResponse(message, literals)
-            print("pr: ", pr)
-        additional_info = ""
-        actual_response = self.pipeline.getResponse(message, pr, additional_info)
-        print("actual_response: ", actual_response)
-        room.post_messages(actual_response)
+        queries, entities = self.pipeline.getQueries(message)
+        print(queries, len(queries))
+        actual_response = self.__get_responses(message, queries, entities)
+        if actual_response:
+            room.post_messages(actual_response)
+            print("actual_response: ", actual_response)
+        else:
+            print('response not sensible, fallback to embeddings')
+            fallback_response = self.__get_responses(message, queries, entities)
+            if fallback_response:
+                room.post_messages(f"The answer suggested by embeddings is: {fallback_response}")
+                print("actual_response: ", fallback_response)
+            else:
+                print('no response possible')
+                raise ValueError
 
 
+    def __get_responses(self, message, queries, entities, prefix=""):
+        all_responses = []
+        cnt = 0
+        for query in queries:
+            print("query: ", query)
+            literals = self.__extract_literals(query)
+            print("literals: ", literals)
+            if literals:
+                print(f"The Title of this thing is: '{entities[cnt]}'")
+                pr = self.pipeline.plaubalise(message, literals, entities[cnt])
+                all_responses.append(pr)
+                print("pr: ", pr)
+            cnt += 1
+        additional_info = "please link the entities together into one sentence, e.g if there are two different titles and two different release years, link them and put them into a sentence like there was ambiguity in your question, the Godfather was released in 1972 and Godfather 2 was released in 2009" if len(queries) > 1 else ""
+        if all_responses:
+            return f"{prefix} {self.pipeline.getResponse(message, all_responses, additional_info)}"
+        return ""
     def __extract_literals(self, query: str):
         literals = []
         print(query)
