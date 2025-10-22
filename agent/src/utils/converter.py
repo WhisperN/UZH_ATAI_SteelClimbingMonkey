@@ -14,14 +14,6 @@ class Converter:
         query = self.occi.ask(nl_input)
         return query
 
-    def embedded_convert_nl_to_sparql(self, nl_input):
-        """
-        Takes natural language inputs and returns a sparql query
-        Speciality: Embedded questions
-        """
-        query = self.occi.ask(nl_input)
-        return query
-
     def query_result_to_nl(self, question, result, additional_info):
         """
         Accepts a list of result entities and generates a natural

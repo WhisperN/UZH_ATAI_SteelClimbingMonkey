@@ -94,6 +94,7 @@ class OcciglotSPARQL:
         q_emb = self.embedder.encode(question, convert_to_tensor=True)
         cos_scores = util.cos_sim(q_emb, self.entity_embeddings).flatten()
         top = torch.topk(cos_scores, k=min(top_k, len(self.entities)))
+        print("Top {} entities:".format(top_k))
         return sorted([(self.entities[i][0], self.entities[i][1], float(cos_scores[i])) for i in top.indices], key=lambda t: t[2])
 
     def _find_predicates(self, question: str, top_k: int = 3):
@@ -141,4 +142,6 @@ SELECT DISTINCT {select_vars} WHERE {{
             print('one entity detected')
             return self._compose_single_entity_query(entities[0][0], [p[0] for p in predicates])
         else:
+            print('no entities detected')
+            print('searching similar entities based on embeddings')
             return ""
